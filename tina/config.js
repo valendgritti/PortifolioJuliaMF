@@ -2,6 +2,15 @@ import { defineConfig, SelectField } from "tinacms";
 
 const branch = process.env.NEXT_PUBLIC_TINA_BRANCH || "main";
 const basePath = process.env.TINA_PUBLIC_BASE_PATH || "";
+const placeholderImage = "/imagens/uploads/placeholder-projeto.svg";
+
+const draftPair = { rotulo: "Nova informação", valor: "Preencha este campo" };
+const draftGalleryImage = {
+  arquivo: placeholderImage,
+  alt: "Imagem provisória que deve ser substituída antes da publicação",
+};
+const draftCredit = { rotulo: "Função", valor: "Pessoa ou empresa" };
+const draftScriptSection = { titulo: "Nova seção", texto: "Escreva o conteúdo desta seção" };
 
 const pairFields = (labelOne, labelTwo) => [
   { type: "string", name: "rotulo", label: labelOne, required: true },
@@ -56,7 +65,8 @@ const commonProjectFields = ({ includeBody = true } = {}) => [
     description: "Ao adicionar, substitua os textos iniciais pelo nome e pelo conteúdo da informação.",
     list: true,
     required: true,
-    defaultItem: { rotulo: "Informação", valor: "A definir" },
+    defaultItem: draftPair,
+    openFormOnCreate: true,
     ui: {
       min: 1,
       itemProps: (item) => ({
@@ -69,14 +79,27 @@ const commonProjectFields = ({ includeBody = true } = {}) => [
   { type: "string", name: "linkExterno", label: "Endereço do link externo", ui: { validate: requiredHttpsUrl } },
   { type: "string", name: "linkTexto", label: "Texto do botão externo" },
 ];
-const galleryField = () => ({ type: "object", name: "galeria", label: "Imagens da galeria", list: true, ui: { min: 1, itemProps: (item) => ({ label: item?.alt || item?.arquivo?.split("/").pop() || "Nova imagem" }) }, fields: [
+const galleryField = () => ({ type: "object", name: "galeria", label: "Imagens da galeria", description: "Ao adicionar, selecione a imagem e substitua a descrição provisória.", list: true, defaultItem: draftGalleryImage, openFormOnCreate: true, ui: { min: 1, itemProps: (item) => ({ label: item?.alt || item?.arquivo?.split("/").pop() || "Nova imagem" }) }, fields: [
   { type: "image", name: "arquivo", label: "Arquivo da imagem", required: true },
   { type: "string", name: "alt", label: "Descrição acessível da imagem", required: true },
 ] });
-const creditsField = () => ({ type: "object", name: "creditos", label: "Equipe e créditos", list: true, ui: { itemProps: (item) => ({ label: item?.rotulo && item?.valor ? `${item.rotulo} — ${item.valor}` : item?.rotulo || item?.valor || "Novo crédito" }) }, fields: pairFields("Função no projeto", "Pessoa ou empresa responsável") });
+const creditsField = () => ({ type: "object", name: "creditos", label: "Equipe e créditos", description: "Ao adicionar, substitua a função e o responsável provisórios.", list: true, defaultItem: draftCredit, openFormOnCreate: true, ui: { itemProps: (item) => ({ label: item?.rotulo && item?.valor ? `${item.rotulo} — ${item.valor}` : item?.rotulo || item?.valor || "Novo crédito" }) }, fields: pairFields("Função no projeto", "Pessoa ou empresa responsável") });
 const variantField = () => ({ type: "string", name: "variantClass", label: "Variação visual interna", ui: { component: "hidden" } });
 const fixedClassification = (model) => [hiddenField("modelo", "Modelo"), hiddenField("categoria", "Categoria"), ...(model.subcategoria ? [hiddenField("subcategoria", "Subcategoria", false)] : [])];
-const defaultItem = (modelo, categoria, subcategoria) => ({ ordem: 99, modelo, categoria, ...(subcategoria ? { subcategoria } : {}) });
+const projectDefaultItem = (modelo, categoria, subcategoria, extra = {}) => ({
+  titulo: "Novo projeto",
+  ordem: 99,
+  modelo,
+  categoria,
+  ...(subcategoria ? { subcategoria } : {}),
+  eyebrow: "Categoria · Ano",
+  resumo: "Escreva um resumo do projeto",
+  descricaoSeo: "Descreva o projeto para buscadores e compartilhamentos em redes sociais.",
+  capa: placeholderImage,
+  capaAlt: "Imagem provisória do novo projeto",
+  fatos: [draftPair],
+  ...extra,
+});
 
 export default defineConfig({
   branch,
@@ -107,7 +130,7 @@ export default defineConfig({
           { type: "string", name: "heroEyebrow", label: "Linha acima do título", required: true },
           { type: "string", name: "heroTitle", label: "Título principal", required: true, description: "Use Enter para começar a segunda linha. A última linha recebe o destaque em itálico automaticamente.", ui: { component: "textarea" } },
           { type: "string", name: "heroIntro", label: "Texto de abertura", required: true, ui: { component: "textarea" } },
-          { type: "object", name: "heroSlides", label: "Imagens de destaque da página inicial", description: "Adicione de 1 a 10 imagens. A ordem desta lista será a ordem exibida no carrossel.", list: true, required: true, ui: { min: 1, max: 10, itemProps: (item) => ({ label: item?.descricao || "Imagem de destaque" }) }, fields: [
+          { type: "object", name: "heroSlides", label: "Imagens de destaque da página inicial", description: "Adicione de 1 a 10 imagens. A ordem desta lista será a ordem exibida no carrossel.", list: true, required: true, defaultItem: { imagem: placeholderImage, descricao: draftGalleryImage.alt }, openFormOnCreate: true, ui: { min: 1, max: 10, itemProps: (item) => ({ label: item?.descricao || "Imagem de destaque" }) }, fields: [
             { type: "image", name: "imagem", label: "Arquivo da imagem", required: true },
             { type: "string", name: "descricao", label: "Descrição da imagem", description: "Explique brevemente o que aparece na imagem para pessoas que usam leitores de tela.", required: true },
           ] },
@@ -134,7 +157,7 @@ export default defineConfig({
         },
         templates: [
           {
-            name: "narrativo", label: "Projeto narrativo", ui: { defaultItem: defaultItem("narrativo", "producao") }, fields: [
+            name: "narrativo", label: "Projeto narrativo", ui: { defaultItem: projectDefaultItem("narrativo", "producao") }, fields: [
               ...titleAndOrderFields(),
               hiddenField("modelo", "Modelo"),
               { type: "string", name: "categoria", label: "Categoria principal", required: true, options: [
@@ -144,13 +167,13 @@ export default defineConfig({
               ...commonProjectFields(), galleryField(), creditsField(), variantField(),
             ],
           },
-          { name: "galeria_still", label: "Galeria foto still", ui: { defaultItem: defaultItem("galeria-still", "fotografia", "foto-still") }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), galleryField(), creditsField(), variantField()] },
-          { name: "fotografia_digital", label: "Fotografia digital", ui: { defaultItem: defaultItem("fotografia-digital", "fotografia", "fotografia-digital") }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), galleryField(), creditsField(), variantField()] },
-          { name: "video_vertical", label: "Vídeo vertical", ui: { defaultItem: defaultItem("video-vertical", "fotografia", "direcao-foto") }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), variantField()] },
-          { name: "roteiro", label: "Roteiro", ui: { defaultItem: defaultItem("roteiro", "diversos", "roteiros") }, fields: [
+          { name: "galeria_still", label: "Galeria foto still", ui: { defaultItem: projectDefaultItem("galeria-still", "fotografia", "foto-still", { galeria: [draftGalleryImage] }) }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), galleryField(), creditsField(), variantField()] },
+          { name: "fotografia_digital", label: "Fotografia digital", ui: { defaultItem: projectDefaultItem("fotografia-digital", "fotografia", "fotografia-digital", { galeria: [draftGalleryImage] }) }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), galleryField(), creditsField(), variantField()] },
+          { name: "video_vertical", label: "Vídeo vertical", ui: { defaultItem: projectDefaultItem("video-vertical", "fotografia", "direcao-foto") }, fields: [...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields(), variantField()] },
+          { name: "roteiro", label: "Roteiro", ui: { defaultItem: projectDefaultItem("roteiro", "diversos", "roteiros", { logline: "Escreva a logline do roteiro", blocosRoteiro: [draftScriptSection] }) }, fields: [
             ...titleAndOrderFields(), ...fixedClassification({ subcategoria: true }), ...commonProjectFields({ includeBody: false }),
             { type: "string", name: "logline", label: "Logline", required: true, ui: { component: "textarea" } },
-            { type: "object", name: "blocosRoteiro", label: "Seções do roteiro", list: true, required: true, ui: { min: 1, itemProps: (item) => ({ label: item?.titulo || "Nova seção" }) }, fields: [
+            { type: "object", name: "blocosRoteiro", label: "Seções do roteiro", list: true, required: true, defaultItem: draftScriptSection, openFormOnCreate: true, ui: { min: 1, itemProps: (item) => ({ label: item?.titulo || "Nova seção" }) }, fields: [
               { type: "string", name: "titulo", label: "Título da seção", required: true }, { type: "string", name: "texto", label: "Texto", required: true, ui: { component: "textarea" } },
             ] },
             { type: "string", name: "trecho", label: "Trecho de exemplo", ui: { component: "textarea" } }, creditsField(), variantField(),

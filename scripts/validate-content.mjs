@@ -5,6 +5,7 @@ import { z } from "zod";
 
 const projectDirectory = path.resolve("src/projetos");
 const repositoryRoot = path.resolve(".");
+const placeholderImage = "/imagens/uploads/placeholder-projeto.svg";
 const files = readdirSync(projectDirectory).filter((file) => file.endsWith(".md"));
 const errors = [];
 const orders = new Map();
@@ -53,6 +54,31 @@ const projectSchema = z.object({
   blocosRoteiro: z.array(z.object({ titulo: nonEmptyString, texto: nonEmptyString })).min(1).optional(),
   trecho: nonEmptyString.optional(),
 }).passthrough().superRefine((data, context) => {
+  const rejectDraftValue = (path, value, draftValue) => {
+    if (value === draftValue) context.addIssue({ code: z.ZodIssueCode.custom, path, message: "ainda contém o valor provisório do editor" });
+  };
+
+  rejectDraftValue(["titulo"], data.titulo, "Novo projeto");
+  rejectDraftValue(["eyebrow"], data.eyebrow, "Categoria · Ano");
+  rejectDraftValue(["resumo"], data.resumo, "Escreva um resumo do projeto");
+  rejectDraftValue(["descricaoSeo"], data.descricaoSeo, "Descreva o projeto para buscadores e compartilhamentos em redes sociais.");
+  rejectDraftValue(["capa"], data.capa, placeholderImage);
+  rejectDraftValue(["capaAlt"], data.capaAlt, "Imagem provisória do novo projeto");
+  data.fatos.forEach((item, index) => {
+    rejectDraftValue(["fatos", index, "rotulo"], item.rotulo, "Nova informação");
+    rejectDraftValue(["fatos", index, "valor"], item.valor, "Preencha este campo");
+  });
+  data.galeria?.forEach((item, index) => rejectDraftValue(["galeria", index, "arquivo"], item.arquivo, placeholderImage));
+  data.creditos?.forEach((item, index) => {
+    rejectDraftValue(["creditos", index, "rotulo"], item.rotulo, "Função");
+    rejectDraftValue(["creditos", index, "valor"], item.valor, "Pessoa ou empresa");
+  });
+  data.blocosRoteiro?.forEach((item, index) => {
+    rejectDraftValue(["blocosRoteiro", index, "titulo"], item.titulo, "Nova seção");
+    rejectDraftValue(["blocosRoteiro", index, "texto"], item.texto, "Escreva o conteúdo desta seção");
+  });
+  rejectDraftValue(["logline"], data.logline, "Escreva a logline do roteiro");
+
   if (templateByModel[data.modelo] !== data._template) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["_template"], message: `não corresponde ao modelo '${data.modelo}'` });
   }

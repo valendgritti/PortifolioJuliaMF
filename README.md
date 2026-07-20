@@ -63,7 +63,8 @@ temporárias compatíveis com as versões fixadas em `package.json`:
 - `patches/@tinacms+cli+2.5.6.patch`: torna o Tina CLI compatível com as versões
   corrigidas de Vite e esbuild;
 - `patches/tinacms+3.11.0.patch`: evita o bloqueio indevido ao navegar entre itens de
-  formulários aninhados. A validação de conteúdo e de salvamento continua ativa.
+  formulários aninhados e diferencia a conclusão do item do salvamento do documento.
+  A validação de conteúdo e de salvamento continua ativa.
 
 Ao atualizar o TinaCMS, reavalie esses patches e remova cada um somente quando a
 correção correspondente estiver disponível oficialmente. Depois da atualização,
